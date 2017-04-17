@@ -103,6 +103,7 @@ function setup-wordpress(){
 
   chmod g+w $WP_ROOT/wp-content/themes
   chmod g+w $WP_ROOT/wp-content/plugins
+  chown $DEVELOPER_USER:www-data $WP_ROOT/wp-config.php
   chown -R $DEVELOPER_USER:www-data $WP_ROOT/wp-content &
 
 }
