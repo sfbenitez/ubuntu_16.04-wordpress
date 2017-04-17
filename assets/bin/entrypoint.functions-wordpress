@@ -1,0 +1,120 @@
+#!/bin/bash
+set -x
+
+function setup-wordpress(){
+
+  test -z "$WP_ROOT" && export WP_ROOT="/var/www/html"
+  test -z "$WP_ADMIN_USER" && export WP_ADMIN_USER="admin"
+  test -z "$WP_ADMIN_PASS" && export WP_ADMIN_PASS="admin"
+  test -z "$WP_ADMIN_EMAIL" && export WP_ADMIN_EMAIL="admin@example.com"
+  test -z "$WP_LANGUAGE" && export WP_LANGUAGE="en_US"
+  test -z "$WP_TITLE" && export WP_TITLE="Please change this empty-page-title"
+  test -z "$WP_URL" && export WP_URL="$(echo $VIRTUAL_HOSTS | awk '{print $1}')"
+
+  if [ -e "$WP_ROOT/wp-config.php.tpl-${ENVIRONMENT}" ]
+  then
+    cp -a "$WP_ROOT/wp-config.php.tpl-${ENVIRONMENT}" $WP_ROOT/wp-config.php.tmp
+  else
+    cp -a /assets/wp-config.php.tpl $WP_ROOT/wp-config.php.tmp
+  fi
+  chmod 775 $WP_ROOT
+  chmod g+w $WP_ROOT/wp-content
+
+  # load init-mysql-db generated environment
+  source /etc/profile.d/mysql-environment.sh
+  # generates wp-config from environment templates
+  if [[ -z "$MYSQL_HOST" ]] || [[ "$MYSQL_HOST" == "localhost" ]]
+  then
+
+    sed -i "s|_MYSQL_HOST_|$MYSQL_HOST|g" $WP_ROOT/wp-config.php.tmp
+    sed -i "s|_MYSQL_USER_|$MYSQL_USER|g" $WP_ROOT/wp-config.php.tmp
+    sed -i "s|_MYSQL_PASS_|$MYSQL_PASS|g" $WP_ROOT/wp-config.php.tmp
+    sed -i "s|_MYSQL_DBNAME_|$MYSQL_DBNAME|g" $WP_ROOT/wp-config.php.tmp
+
+    cp -a $WP_ROOT/wp-config.php.tmp $WP_ROOT/wp-config.php
+    rm -f $WP_ROOT/wp-config.php.tmp
+
+  else
+ 
+    env | grep ^MYSQL_ | while read var;
+    do
+      VAR_TO_REPLACE=$(echo $var | awk -F= '{print $1}')
+      VALUE_TO_SET=$(echo $var | awk -F= '{print $2}')
+      sed -i "s|_${VAR_TO_REPLACE}_|${VALUE_TO_SET}|g" $WP_ROOT/wp-config.php.tmp
+    done
+
+    cp -a $WP_ROOT/wp-config.php.tmp $WP_ROOT/wp-config.php
+    rm -f /etc/supervisor/conf.d/mysql.ini
+    rm -f $WP_ROOT/wp-config.php.tmp
+
+  fi
+
+  if [[ -z "$MYSQL_HOST" ]] || [[ "$MYSQL_HOST" == "localhost" ]]
+  then
+    # make mysql available
+    MYSQLD_SAFE="mysqld_safe --user mysql"
+    $MYSQLD_SAFE &
+    check-mysql-conn
+    while [ $? -ne 0 ]
+    do
+      sleep 1.5
+      check-mysql-conn
+    done
+  fi
+ 
+  if ! $(wp --path=$WP_ROOT core is-installed  --allow-root); then
+
+   echo "=> WordPress is not configured yet, configuring WordPress ..."
+
+   echo "=> Installing WordPress"
+
+   if [ ! -z "$WP_VERSION" ]
+   then
+     WP_CORE_DOWNLOAD_ARGS="--version=$WP_VERSION"
+   fi
+
+   sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT core download $WP_CORE_DOWNLOAD_ARGS
+   sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT core install --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_password="$WP_ADMIN_PASS" --admin_email="$WP_ADMIN_EMAIL"
+  # su -p www-data -c 'wp core install --path=$WP_ROOT --url="$WP_URL" --title="$WP_TITLE" --admin_user="$WP_ADMIN_USER" --admin_password="$WP_ADMIN_PASS" --admin_email="$WP_ADMIN_EMAIL"'
+   sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT core language install "$WP_LANGUAGE"
+   sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT core language activate "$WP_LANGUAGE"
+   for plugin in $WP_PLUGINS
+   do
+     sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT plugin install --activate $plugin
+   done
+
+  else
+    sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT option update siteurl $WP_URL
+    sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT option update home $WP_URL
+    if [ -z "$(sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT user list | awk '{print $2}' | grep -v user_login | grep $WP_ADMIN_USER)" ];
+    then
+      sudo -E -u $DEVELOPER_USER wp --allow-root --path=$WP_ROOT user create $WP_ADMIN_USER $WP_ADMIN_EMAIL --role=administrator --user_pass=$WP_ADMIN_PASSWORD
+    fi
+#   get-current-wp-base-urls
+#   sudo -E -u $DEVELOPER_USER wp --path=$WP_ROOT search-replace --url=$WP_URL "http://localhost" "http://$WP_URL" --recurse-objects --network --skip-columns=guid
+   echo "=> WordPress is already installed/configured.";
+  fi
+
+  if [[ -z "$MYSQL_HOST" ]] || [[ "$MYSQL_HOST" == "localhost" ]]
+  then
+    pkill -f mysql
+    while [ ! -z "$(pgrep mysqld)" ]; do sleep 1; done
+  fi
+
+  chmod g+w $WP_ROOT/wp-content/themes
+  chmod g+w $WP_ROOT/wp-content/plugins
+  chown -R $DEVELOPER_USER:www-data $WP_ROOT/wp-content &
+
+}
+
+function set-environment-divergences() {
+
+  # remove xdebug if we are not in devel/staging environment
+  if [[ -z "$(echo $ENVIRONMENT | grep "dev\|stg")" ]]
+  then
+    rm /etc/php/apache2/conf.d/20-xdebug.ini
+  fi
+
+  # unset basic auth if we are not in devel/staging
+
+}

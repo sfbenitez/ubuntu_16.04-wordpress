@@ -1,0 +1,41 @@
+version: '2'
+services:
+  demo-_PROJECT_NAME_.emergyalabs.com:
+    image: ${DOCKER_IMAGE}
+    ports:
+      - "22122:22"
+      - "80:80"
+      - "443:443"
+    environment:
+      - HOST_UID=${HOST_UID}
+      - HOST_GID=${HOST_GID}
+      - DEVELOPER_USER=${DEVELOPER_USER}
+      - LOCALES=es_ES.UTF-8 en_US.UTF-8
+      - PROJECT_NAME=${PROJECT_NAME}
+      - ENVIRONMENT=${ENVIRONMENT}
+      - ENV_VHOST=${ENV_VHOST}
+      - VIRTUAL_HOSTS=${VIRTUAL_HOSTS}
+      - MYSQL_HOST=${MYSQL_HOST} # defaults to 'localhost'
+      - MYSQL_USER=${MYSQL_USER} # defaults to 'root'
+      - MYSQL_PASS=${MYSQL_PASS} # defaults to ''
+      - MYSQL_DBNAME=${MYSQL_DBNAME} # defaults to '$PROJECT_NAME' or '_PROJECT_NAME_'
+      - MEMCACHED_HOST=${MEMCACHED_HOST}
+      - MEMCACHED_PORT=${MEMCACHED_PORT}
+      - WP_DBNAME=${MYSQL_DBNAME}
+      - WP_ROOT=${WP_ROOT} # defaults to '/var/www/html'
+      - WP_URL=${ENV_VHOST}
+      - WP_TITLE=${WP_TITLE}
+      - WP_LANGUAGE=${WP_LANGUAGE}
+      - WP_PLUGINS=${WP_PLUGINS}
+      - WP_ADMIN_USER=${WP_ADMIN_USER}
+      - WP_ADMIN_PASS=${WP_ADMIN_PASS}
+      - WP_ADMIN_EMAIL=${WP_ADMIN_EMAIL}
+    volumes:
+      - ${SSH_CREDENTIALS_DIR}:/home/developer/.ssh
+      - ${PROJECT_DIR}:${PROJECT_DIR}
+      - ${PROJECT_DIR}/src:/var/www/html
+      - ${DATA_DIR}:/data
+      - /opt/data/docker-containers-volumes/var/www/html/wp-content:/var/www/html/wp-content
+      - /opt/data/docker-containers-volumes/var/log/apache2:/var/log/apache2
+      - /opt/data/docker-containers-volumes/var/lib/mysql:/var/lib/mysql
+      - /opt/data/docker-containers-volumes/etc/apache2/htpasswd/env-htpasswd:/etc/apache2/htpasswd/env-htpasswd
