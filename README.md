@@ -73,7 +73,7 @@ export WP_ADMIN_USER="admin"
 export WP_ADMIN_PASS="CHANGEME"
 export WP_ADMIN_EMAIL="admin@example.com"
 export WP_LANGUAGE="en_US"
-export WP_URL="http://$ENV_VHOST/blog"
+export WP_URL="http://$ENV_VHOST"
 ```
 * Run the environment:
 ```
