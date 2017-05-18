@@ -1,4 +1,5 @@
 ![build passing](https://img.shields.io/docker/automated/emergya/automated-ubuntu_16.04-wordpress.svg)
+[![](https://images.microbadger.com/badges/image/emergya/automated-ubuntu_16.04-wordpress.svg)](https://hub.docker.com/r/emergya/automated-ubuntu_16.04-wordpress/)
 
 # ToC (Table of Contents)
 
