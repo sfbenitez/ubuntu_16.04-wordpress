@@ -136,7 +136,7 @@ assets/
 # FAQ
 
 * Where did the 'wp-config.php' file come from?
-  * Config file is dinamically generated from templates on container startup so you can:
+  * Config file is dinamically generated from templates filled in with environment variables on container startup, so you can:
     * Add some templates for your different environments in "$WP_ROOT/wp-config.tpl-$ENVIRONMENT"
     * Modify default container template at 'assets/wp-config.php.tpl'
 
